@@ -1,8 +1,8 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # This will enable CORS for all routes
+CORS(app)  # enable CORS for all routes
 
 POSTS = [
     {"id": 1, "title": "First post", "content": "This is the first post."},
@@ -10,10 +10,33 @@ POSTS = [
 ]
 
 
-@app.route('/api/posts', methods=['GET'])
+@app.route("/api/posts", methods=["GET"])
 def get_posts():
-    return jsonify(POSTS)
+    return jsonify(POSTS), 200
 
 
-if __name__ == '__main__':
+@app.route("/api/posts", methods=["POST"])
+def add_post():
+    # force=True makes Flask try to parse JSON even if header is wrong (helps while debugging)
+    data = request.get_json(force=True, silent=True) or {}
+
+    missing = []
+    if not data.get("title"):
+        missing.append("title")
+    if not data.get("content"):
+        missing.append("content")
+
+    if missing:
+        return jsonify(
+            {"error": "Missing required field(s)", "missing_fields": missing}
+        ), 400
+
+    new_id = max((p["id"] for p in POSTS), default=0) + 1
+    new_post = {"id": new_id, "title": data["title"], "content": data["content"]}
+    POSTS.append(new_post)
+
+    return jsonify(new_post), 201
+
+
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5002, debug=True)
